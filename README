@@ -1,13 +1,11 @@
 # Social Media Analysis Dashboard 🚀
 
-![Vue](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs)
-![Supabase](https://img.shields.io/badge/Supabase-8FBCBB?logo=supabase)
-![Twitter API](https://img.shields.io/badge/Twitter_API-1DA1F2?logo=twitter)
+
+<img src="https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs" alt="Vue"></img> <img src="https://img.shields.io/badge/Supabase-8FBCBB?logo=supabase" alt="Supabase"></img> <img src="https://img.shields.io/badge/Twitter_API-1DA1F2?logo=twitter" alt="Twitter API"></img>
 
 A real-time social media analytics dashboard that displays and analyzes content from multiple platforms, starting with Twitter API integration.
 
-
-![Dashboard Screenshot](./image(1).png) * *
+<#comment #comment=" Make sure these image paths point to actual files in your repository "></#comment> <img src="./image(1).png" alt="Dashboard Screenshot"></img>
 
 ## ✨ Features
 
