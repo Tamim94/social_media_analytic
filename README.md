@@ -62,6 +62,8 @@ twitter-dashboard/
 │   └── functions/            # Edge Functions
 │       └── twitter-fetch/    # Twitter API handler
 └── tests/                    # (Planned) Test directory
+
+```
 🚀 Getting Started
 Prerequisites
 Node.js v16+
@@ -152,14 +154,16 @@ Add unit tests with Vitest
 Distributed under the MIT License. See LICENSE for more information.
 
 📬 Contact
-Your Name - @yourtwitter - youremail@example.com
+Tamim GOLAM - golam.tamim94@gmail.com
+Karl Marvensky JOISSAINT 
+Jean-Pierre TRAN 
 
-Project Link: https://github.com/yourusername/social-media-analytics
+Project Link: https://github.com/tamim94/social-media-analytics
 
 🙏 Acknowledgments
 Vue.js and Supabase communities
 
 Twitter API documentation
 
-Awesome README templates
+
 
