@@ -54,6 +54,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Create Supabase-equivalent roles (grants reference them)
+        run: |
+          psql "postgresql://postgres:postgres@localhost:5432/wikistream" -c "create role anon nologin" -c "create role authenticated nologin"
       - name: Apply core migrations (strict)
         run: |
           for f in supabase/migrations/*.sql; do
