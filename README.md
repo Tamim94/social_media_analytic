@@ -1,6 +1,7 @@
 # wikistream 🌊
 
 [![CI](https://github.com/Tamim94/Wikistream/actions/workflows/ci.yml/badge.svg)](https://github.com/Tamim94/Wikistream/actions/workflows/ci.yml)
+![License](https://img.shields.io/badge/license-all%20rights%20reserved-red)
 **[🔴 LIVE DEMO](https://wikistream.golam-tamim94.workers.dev/)**
 
 Live analytics over **Wikimedia's global edit stream** — every edit, on every wiki, as it happens.
@@ -108,7 +109,14 @@ journalctl -u wikistream-ingest -f -o cat   # batches + stats every 30 s
 - **Gaps** (data older than the replay window after downtime) are recorded in the database and
   surfaced here, never papered over.
 - Measured numbers above come from the running system; this project has been live since
-  *2026-08-29* and is still accumulating history.
+  *2026-08-29* and is still accumulating history. The daemon snapshots its own pulse (RSS,
+  cumulative events, database size) into `daemon_stats` every 30 minutes — the storage-growth
+  story has a paper trail.
+
+## License
+
+Restrictive: the code is visible for learning, **not licensed for reuse** — see
+[LICENSE](LICENSE). For anything beyond personal study, ask first.
 
 ## Contact
 

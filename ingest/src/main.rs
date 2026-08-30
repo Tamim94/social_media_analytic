@@ -564,6 +564,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut window: VecDeque<Instant> = VecDeque::new();
     let mut stats = tokio::time::interval(Duration::from_secs(30));
+    let mut snapshots = tokio::time::interval(Duration::from_secs(1_800));
+    snapshots.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let mut first_event = true;
 
     log(&format!("connecting to {STREAM_URL}"));
@@ -619,6 +621,22 @@ async fn main() -> anyhow::Result<()> {
                     window.len(),
                     rss_kb()
                 ));
+            }
+            _ = snapshots.tick() => {
+                // persistent pulse (ticket 10 follow-up): the paper trail behind
+                // the README's storage/memory numbers
+                match sqlx::query(
+                    "insert into daemon_stats (rss_kb, events_total, db_size_bytes)
+                     values ($1, (select coalesce(sum(events), 0) from ingest_batches),
+                             (select pg_database_size(current_database())))",
+                )
+                .bind(rss_kb() as i64)
+                .execute(&pool)
+                .await
+                {
+                    Ok(_) => log("snapshot: daemon_stats row written"),
+                    Err(e) => log(&format!("snapshot error: {e}")),
+                }
             }
         }
     }
