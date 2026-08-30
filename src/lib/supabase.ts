@@ -13,11 +13,14 @@ export async function fetchView<T>(view: string): Promise<T[]> {
   return (data ?? []) as T[]
 }
 
-// staggered 60 s poll per view (ticket 09); re-runs when the watched source changes
-export function usePoll<T>(fetcher: () => Promise<T>, offsetMs = 0, watch?: WatchSource) {
+// Poll per view with its own interval; paused while the tab is hidden so an
+// always-open dashboard can't burn egress (ADR 0004). Re-runs on watched change.
+export function usePoll<T>(fetcher: () => Promise<T>, intervalMs = 60_000, watch?: WatchSource) {
   const data = ref<T | null>(null)
   const error = ref<string | null>(null)
+  let id: number | undefined
   async function run() {
+    if (document.hidden) return // hidden tabs cost nothing
     try {
       data.value = await fetcher()
       error.value = null
@@ -27,8 +30,12 @@ export function usePoll<T>(fetcher: () => Promise<T>, offsetMs = 0, watch?: Watc
   }
   onMounted(() => {
     run()
-    const id = setInterval(run, 60_000 + offsetMs)
-    onUnmounted(() => clearInterval(id))
+    id = window.setInterval(run, intervalMs)
+    document.addEventListener('visibilitychange', run)
+    onUnmounted(() => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', run)
+    })
   })
   if (watch) {
     watch(watch, run)

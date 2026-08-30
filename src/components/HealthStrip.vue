@@ -2,7 +2,7 @@
 import { usePoll, fetchView } from '../lib/supabase'
 import type { Health } from '../types'
 
-const { data } = usePoll<Health[]>(() => fetchView<Health>('v_health'))
+const { data } = usePoll<Health[]>(() => fetchView<Health>('v_health'), 120_000)
 
 function lagSeconds(lag: string | null): string {
   if (!lag) return '—'

@@ -1,5 +1,8 @@
 # wikistream 🌊
 
+[![CI](https://github.com/Tamim94/Wikistream/actions/workflows/ci.yml/badge.svg)](https://github.com/Tamim94/Wikistream/actions/workflows/ci.yml)
+**[🔴 LIVE DEMO](https://wikistream.golam-tamim94.workers.dev/)**
+
 Live analytics over **Wikimedia's global edit stream** — every edit, on every wiki, as it happens.
 
 A Rust daemon consumes the [EventStreams](https://wikitech.wikimedia.org/wiki/EventStreams) firehose
@@ -46,14 +49,23 @@ Measured from the running system, updated as it accumulates — not aspirational
 4. **Retention** — `pg_cron` deletes: minute buckets after 7 days, hourly after 30, daily after 90;
    the raw window is dropped after 6 hours. Full-fidelity events live 30 days as compressed
    NDJSON on the ingest VM.
-5. **Reads** — the dashboard polls anon-readable views (`v_edits_timeline`, `v_top_wikis_24h`,
-   `v_bot_ratio_24h`, `v_editor_trend`, `v_health`). No auth, no sockets — boring on purpose.
+5. **Reads** — the dashboard polls anon-readable views (`v_edits_timeline`, `v_top_wikis_*`,
+   `v_editor_trend`, `v_health`) with staggered 60 s polls, paused when the tab is hidden.
+   No auth, no sockets — boring on purpose.
+
+## Live demo
+
+**https://wikistream.golam-tamim94.workers.dev/** — deployed on Cloudflare (static, free tier),
+rebuilt automatically on every push. An independent [UptimeRobot](https://uptimerobot.com) monitor
+watches it, so the uptime claim has a witness that isn't the author. The read path is view-only
+(grants to `anon`, RLS deny-all on every base table) — see [ADR 0004](docs/adr/0004-public-read-path.md).
 
 ## Stack
 
 - **Ingest**: Rust (tokio, sqlx, reqwest-eventsource, hyperloglogplus) · systemd on an Oracle Cloud VM
 - **Database**: Postgres on Supabase (free tier) — rollups, HLL sketches as `bytea`, `pg_cron`
-- **Dashboard**: Vue 3 + Vite + Tailwind, static hosting
+- **Dashboard**: Vue 3 + Vite + Tailwind · Cloudflare (free tier) · UptimeRobot witness
+- **CI**: GitHub Actions — Vue typecheck/build, Rust fmt/clippy/build, migrations on vanilla Postgres
 
 ## Repo layout
 
@@ -87,6 +99,8 @@ journalctl -u wikistream-ingest -f -o cat   # batches + stats every 30 s
   with daemon-computed estimates, atomic batch+cursor
 - [ADR 0003 — Delivery semantics](docs/adr/0003-delivery-semantics.md): strictly-newer resume,
   loss-only gap ledger, uniform grain path, daemon-owned archive
+- [ADR 0004 — Public read path](docs/adr/0004-public-read-path.md): Cloudflare Pages, view-only
+  anon grants, RLS deny-all on base tables, staggered polls, uptime witness
 
 ## Honesty section
 

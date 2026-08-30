@@ -7,13 +7,15 @@ import WindowTabs from './components/WindowTabs.vue'
 import EditsTimeline from './components/EditsTimeline.vue'
 import TopWikis from './components/TopWikis.vue'
 import EditorTrend from './components/EditorTrend.vue'
+import About from './views/About.vue'
 
+const view = ref<'dash' | 'about'>('dash')
 const winKey = ref('24h')
 const win = () => WINDOWS.find(w => w.key === winKey.value) ?? WINDOWS[0]
 
-const timeline = usePoll<TimelineRow[]>(() => fetchView<TimelineRow>(win().timeline), 0, watch(winKey))
-const wikis = usePoll<WikiRow[]>(() => fetchView<WikiRow>(win().wikis), 15_000, watch(winKey))
-const trend = usePoll<TrendRow[]>(() => fetchView<TrendRow>('v_editor_trend'), 30_000)
+const timeline = usePoll<TimelineRow[]>(() => fetchView<TimelineRow>(win().timeline), 60_000, watch(winKey))
+const wikis = usePoll<WikiRow[]>(() => fetchView<WikiRow>(win().wikis), 300_000, watch(winKey))
+const trend = usePoll<TrendRow[]>(() => fetchView<TrendRow>('v_editor_trend'), 600_000)
 
 const GRAIN_LABEL: Record<string, string> = { '24h': 'minute', '7d': 'hour', '90d': 'day' }
 
@@ -50,26 +52,34 @@ onUnmounted(() => clearInterval(clockId))
 <template>
   <header>
     <b>WIKISTREAM</b><span class="cursor"></span><span class="live">● LIVE</span>
-    <span class="right">{{ clock }}</span>
+    <span class="right nav">
+      <span :class="{ on: view === 'dash' }" @click="view = 'dash'">DASHBOARD</span>
+      <span :class="{ on: view === 'about' }" @click="view = 'about'">ABOUT</span>
+      <span class="clock">{{ clock }}</span>
+    </span>
   </header>
   <main class="wrap">
-    <div v-if="tape" class="tape">
-      <span>{{ tape.t }}</span>
-      <span>edits <b>{{ tape.edits.toLocaleString() }}</b>/{{ GRAIN_LABEL[winKey] === 'day' ? 'day' : GRAIN_LABEL[winKey] === 'hour' ? 'hour' : 'min' }}</span>
-      <span>human <b>{{ tape.human.toLocaleString() }}</b></span>
-      <span>bot <b>{{ tape.bot.toLocaleString() }}</b></span>
-      <span>new pages <b>{{ tape.np.toLocaleString() }}</b></span>
-    </div>
+    <About v-if="view === 'about'" />
 
-    <WindowTabs v-model="winKey" />
-    <HealthStrip />
+    <template v-else>
+      <div v-if="tape" class="tape">
+        <span>{{ tape.t }}</span>
+        <span>edits <b>{{ tape.edits.toLocaleString() }}</b>/{{ GRAIN_LABEL[winKey] === 'day' ? 'day' : GRAIN_LABEL[winKey] === 'hour' ? 'hour' : 'min' }}</span>
+        <span>human <b>{{ tape.human.toLocaleString() }}</b></span>
+        <span>bot <b>{{ tape.bot.toLocaleString() }}</b></span>
+        <span>new pages <b>{{ tape.np.toLocaleString() }}</b></span>
+      </div>
 
-    <div class="grid">
-      <EditsTimeline :rows="timeline.data.value ?? []" :grain-label="GRAIN_LABEL[winKey]" />
-      <TopWikis :rows="wikis.data.value ?? []" />
-      <EditorTrend :rows="trend.data.value ?? []" />
-    </div>
+      <WindowTabs v-model="winKey" />
+      <HealthStrip />
 
-    <p v-if="timeline.error" class="error">{{ timeline.error }}</p>
+      <div class="grid">
+        <EditsTimeline :rows="timeline.data.value ?? []" :grain-label="GRAIN_LABEL[winKey]" />
+        <TopWikis :rows="wikis.data.value ?? []" />
+        <EditorTrend :rows="trend.data.value ?? []" />
+      </div>
+
+      <p v-if="timeline.error" class="error">{{ timeline.error }}</p>
+    </template>
   </main>
 </template>
