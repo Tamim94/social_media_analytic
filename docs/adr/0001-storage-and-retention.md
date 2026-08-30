@@ -29,3 +29,12 @@ The Wikimedia firehose produces ~3.8 GB/day of raw events against a 500 MB datab
 - **Sketches live only on totals rows.** Per-(bucket, wiki) unique-editor counts would multiply 4 KB sketches by ~300 wikis × 730 buckets — hundreds of MB for a number no chart shows. Wiki rows carry counters only; unique-editors is a global-per-bucket series.
 - The raw window's presence is what licenses re-derivation: any rollup bug is fixed by replaying ≤ 6 h from Postgres, or ≤ 30 days from the VM archive, or nothing (honest gap) beyond that.
 - Deletion is `pg_cron`'s job and must be reviewed if the archive window or any tier number changes.
+
+## Measured correction (2026-08-30, ~36 h live)
+
+The raw window's real density is ~60% above the estimate: ~805 k rows per 6 h (the firehose
+averages ~37 events/s, and the `event_id` primary key + ts index roughly double the heap cost),
+so the window is **~185 MB at steady state, not ~85 MB** — total database steady state ≈
+**210 MB of 500 MB** (2.4× headroom, not 2.9×). Retention numbers are unchanged. `raw_events`
+now carries aggressive per-table autovacuum settings (5% scale factor) to keep delete churn
+from accumulating.

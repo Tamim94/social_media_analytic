@@ -33,7 +33,7 @@ Measured from the running system, updated as it accumulates — not aspirational
 | Ingest rate | ~28–33 events/s | daemon stats (journald) |
 | Daemon memory | ~13–14 MB RSS, flat | /proc/self/statm |
 | Uptime | *accumulating* | systemd + external witness |
-| DB size | 64 MB of 500 MB | `pg_database_size` |
+| DB size | ~200 MB of 500 MB at steady state (raw 6 h window dominates) | `pg_database_size` |
 | Recorded gaps | 0 | `ingest_gaps` (loss only — see ADR 0003) |
 | Editor estimates | HLL p=12 (~1.6% typical error) | daemon-computed, labeled as estimates |
 
