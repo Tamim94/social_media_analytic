@@ -18,10 +18,10 @@ const links = [
       storage and retention decision is deliberate; the reasoning lives in the repo's ADRs.
     </p>
     <p class="bio" style="margin-top: 10px">
-      The numbers on the dashboard are measured from the running system, the editor counts are
-      labeled as estimates, and the daemon has been ingesting without supervision since
-      August 2026. Everything runs on free tiers: Oracle Cloud (the daemon), Supabase (Postgres),
-      Cloudflare (this page).
+      The numbers on the dashboard are measured from the running system, and the editor counts are
+      labeled as estimates. The daemon has been ingesting unattended since 30 August 2026 — the
+      history on this page is everything it has seen, and it grows from here. Everything runs on
+      free tiers: Oracle Cloud (the daemon), Supabase (Postgres), Cloudflare (this page).
     </p>
     <div class="links">
       <a v-for="l in links" :key="l.label" :href="l.url" target="_blank" rel="noopener">
