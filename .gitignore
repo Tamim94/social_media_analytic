@@ -27,3 +27,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# local agent tooling & planning state (not for the public repo)
+.agents/
+.scratch/
+skills-lock.json
+docs/agents/

@@ -27,7 +27,7 @@ Primary sources: [Supabase pricing](https://supabase.com/pricing), [Supabase Cro
 3. The 2-active-project limit is a real constraint for ticket 03 (a currently-idle project may need pausing).
 4. The pause policy means the demo's health and the project's health are the same thing — another reason the daemon must run from day one.
 
-## Correction (2026-08-30, verified live on project mcuqcrhvvgglbdalpird)
+## Correction (2026-08-30, verified live on project <project-ref>)
 
 Provisioning (ticket 03) ran `pg_available_extensions` against the real project and corrected two claims above:
 
