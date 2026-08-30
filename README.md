@@ -14,6 +14,8 @@ holding **90 days of queryable history inside a 500 MB free tier**. A Vue dashbo
 > Raw, that stream is ~3.8 GB/day. The database budget is 500 MB. That constraint is the project:
 > nothing about the storage design is optional.
 
+![wikistream — live dashboard, real data](docs/screenshot.png)
+
 ## Architecture
 
 ```mermaid
