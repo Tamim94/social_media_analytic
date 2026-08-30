@@ -61,3 +61,23 @@ svg { width: 100%; height: auto; display: block; }
 .row .num { text-align: right; font-variant-numeric: tabular-nums; color: #c9c6bd; }
 .foot { color: #55524a; font-size: 11px; margin-top: 8px; }
 .error { color: #d9a53a; margin-top: 12px; }
+
+html, body { overflow-x: clip; }
+
+/* ── mobile: one column, wrapped header, 2×2 strip ─────────────────────── */
+@media (max-width: 760px) {
+  header { flex-wrap: wrap; gap: 8px 12px; padding: 12px 16px; }
+  header .right { gap: 12px; width: 100%; justify-content: space-between; }
+  .wrap { padding: 14px 12px 32px; }
+  .tape { flex-wrap: wrap; gap: 6px 14px; }
+  .controls { width: 100%; }
+  .controls span { flex: 1; text-align: center; padding: 8px 6px; font-size: 11px; }
+  .strip { display: grid; grid-template-columns: 1fr 1fr; }
+  .cell { border-bottom: 1px solid #2a2822; padding: 8px 12px; }
+  .cell:nth-child(2n) { border-right: none; }
+  .cell:nth-child(3), .cell:nth-child(4) { border-bottom: none; }
+  .cell b { font-size: 16px; }
+  .grid { grid-template-columns: 1fr; }
+  .row { grid-template-columns: minmax(0, 1fr) 72px 56px; gap: 8px; }
+  .card { padding: 12px; }
+}

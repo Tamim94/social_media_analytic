@@ -8,17 +8,20 @@ const links = [
 
 <template>
   <div class="card" style="max-width: 760px">
-    <h3>About · Tamim GOLAM <i>· golam.tamim94@gmail.com</i></h3>
+    <h3>About this project <i>· built by Tamim GOLAM</i></h3>
     <p class="bio">
-      I wanted a portfolio project that proves something a scaffolded UI can't: that I can keep a
-      system alive. This one ingests Wikimedia's global edit stream with a Rust daemon, holds 90
-      days of history in a 500 MB free-tier database, records its own gaps instead of hiding them,
-      and has been running — without me touching it — since August 2026. The hard parts here aren't
-      the charts; they're the constraints the stream forces on every design decision.
+      wikistream is a live analytics pipeline over Wikimedia's global edit stream. A Rust daemon
+      consumes every edit on every wiki — about 30 events per second, 2.6 million a day — and rolls
+      it up inside a 500 MB free-tier Postgres: minute/hour/day buckets, HyperLogLog estimates of
+      unique editors, a durable cursor for crash-safe resume, and a gap ledger that records lost
+      data instead of hiding it. The raw stream is ~3.8 GB/day against that 500 MB budget, so every
+      storage and retention decision is deliberate; the reasoning lives in the repo's ADRs.
     </p>
     <p class="bio" style="margin-top: 10px">
-      If something on this page shows an estimate, it says so. If data was ever lost, there's a row
-      in a gaps table admitting it. That's the kind of engineering I'm interested in.
+      The numbers on the dashboard are measured from the running system, the editor counts are
+      labeled as estimates, and the daemon has been ingesting without supervision since
+      August 2026. Everything runs on free tiers: Oracle Cloud (the daemon), Supabase (Postgres),
+      Cloudflare (this page).
     </p>
     <div class="links">
       <a v-for="l in links" :key="l.label" :href="l.url" target="_blank" rel="noopener">
