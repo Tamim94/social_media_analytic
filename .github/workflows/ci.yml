@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Vue build + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  ingest:
+    name: Rust fmt + clippy + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ingest
+      - run: cargo fmt --check
+        working-directory: ingest
+      - run: cargo clippy -- -D warnings
+        working-directory: ingest
+      - run: cargo build --release
+        working-directory: ingest
+
+  migrations:
+    name: SQL migrations on vanilla Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wikistream
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply core migrations (strict)
+        run: |
+          for f in supabase/migrations/*.sql; do
+            case "$f" in *_cron.sql) continue ;; esac
+            echo "applying $f"
+            psql "postgresql://postgres:postgres@localhost:5432/wikistream" -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Supabase-only migrations (pg_cron — expected to fail on vanilla PG)
+        run: |
+          for f in supabase/migrations/*_cron.sql; do
+            echo "checking $f (errors expected: pg_cron is Supabase-only)"
+            psql "postgresql://postgres:postgres@localhost:5432/wikistream" -v ON_ERROR_STOP=0 -f "$f" || true
+          done

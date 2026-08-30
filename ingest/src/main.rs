@@ -208,8 +208,10 @@ impl Buffer {
 
 /// Batch-local per-wiki deltas for hour/day grain (counters only — per ADR
 /// 0001, wiki rows never carry sketches).
-fn wiki_deltas(buf: &Buffer, grain: u8) -> HashMap<(i64, String), (i64, i64, i64, i64, i64)> {
-    let mut out: HashMap<(i64, String), (i64, i64, i64, i64, i64)> = HashMap::new();
+type WikiDelta = (i64, i64, i64, i64, i64); // edits, new_pages, bot_edits, bytes_added, bytes_removed
+
+fn wiki_deltas(buf: &Buffer, grain: u8) -> HashMap<(i64, String), WikiDelta> {
+    let mut out: HashMap<(i64, String), WikiDelta> = HashMap::new();
     for r in &buf.raws {
         if r.kind != "edit" && r.kind != "new" {
             continue;
@@ -280,8 +282,12 @@ async fn flush(
     qb.build().execute(&mut *tx).await?;
 
     // totals rows at every grain (counters + sketch + estimate)
-    for (g, table) in [(G_MINUTE, "rollup_minute"), (G_HOUR, "rollup_hour"), (G_DAY, "rollup_day")] {
-        for ((grain, key), acc) in buf.buckets.iter_mut().filter(|((grain, _), _)| *grain == g) {
+    for (g, table) in [
+        (G_MINUTE, "rollup_minute"),
+        (G_HOUR, "rollup_hour"),
+        (G_DAY, "rollup_day"),
+    ] {
+        for ((_, key), acc) in buf.buckets.iter_mut().filter(|((grain, _), _)| *grain == g) {
             let est = acc.sketch.as_mut().map(|s| s.count() as i64);
             let sk: Vec<u8> = match acc.sketch.as_ref() {
                 Some(s) => bincode::serialize(s)?,
@@ -448,7 +454,12 @@ async fn archive_task(mut rx: mpsc::UnboundedReceiver<String>) {
                 .append(true)
                 .open(dir.join(format!("{name}.ndjson.gz")))
             {
-                Ok(f) => writer = Some(flate2::write::GzEncoder::new(f, flate2::Compression::fast())),
+                Ok(f) => {
+                    writer = Some(flate2::write::GzEncoder::new(
+                        f,
+                        flate2::Compression::fast(),
+                    ))
+                }
                 Err(e) => log(&format!("archive open error: {e}")),
             }
             cur_hour = Some(hour);
@@ -466,7 +477,9 @@ async fn archive_task(mut rx: mpsc::UnboundedReceiver<String>) {
             }
         }
         if let Some(w) = writer.as_mut() {
-            let _ = w.write_all(line.as_bytes()).and_then(|_| w.write_all(b"\n"));
+            let _ = w
+                .write_all(line.as_bytes())
+                .and_then(|_| w.write_all(b"\n"));
         }
     }
 }
@@ -475,7 +488,8 @@ async fn archive_task(mut rx: mpsc::UnboundedReceiver<String>) {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set (systemd EnvironmentFile)");
+    let db_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL not set (systemd EnvironmentFile)");
     let pool = PgPoolOptions::new()
         .max_connections(4)
         .acquire_timeout(Duration::from_secs(15))

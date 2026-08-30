@@ -1,169 +1,101 @@
-# Social Media Analysis Dashboard 🚀
+# wikistream 🌊
 
+Live analytics over **Wikimedia's global edit stream** — every edit, on every wiki, as it happens.
 
-<img src="https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs" alt="Vue"></img> <img src="https://img.shields.io/badge/Supabase-8FBCBB?logo=supabase" alt="Supabase"></img> <img src="https://img.shields.io/badge/Twitter_API-1DA1F2?logo=twitter" alt="Twitter API"></img>
+A Rust daemon consumes the [EventStreams](https://wikitech.wikimedia.org/wiki/EventStreams) firehose
+(~30 edits/second, worldwide, ~2.6 M events/day) and rolls it up into Postgres: minute/hour/day
+buckets, HyperLogLog unique-editor estimates, and a durable cursor with honest gap accounting —
+holding **90 days of queryable history inside a 500 MB free tier**. A Vue dashboard reads the rollups.
 
-A real-time social media analytics dashboard that displays and analyzes content from multiple platforms, starting with Twitter API integration.
+> Raw, that stream is ~3.8 GB/day. The database budget is 500 MB. That constraint is the project:
+> nothing about the storage design is optional.
 
-<img src="./image.png" alt="Dashboard Screenshot"></img>
+## Architecture
 
-## ✨ Features
+```mermaid
+flowchart LR
+    A[EventStreams SSE<br/>~30 events/s] --> B[Rust daemon<br/>Oracle VM · systemd · ~14 MB RSS]
+    B -->|batch per 5 s<br/>one transaction| C[(Postgres on Supabase<br/>rollups + 6 h raw window)]
+    B -->|hourly .ndjson.gz| D[VM archive<br/>30 days full fidelity]
+    C -->|anon read-only views| E[Vue dashboard<br/>static host]
+    C -->|pg_cron| F[retention: 90/30/7 d<br/>+ raw window drop]
+```
 
-### Current Implementation (App still in progress)
-- 🐦 Real-time Twitter feed from selected accounts (@elonmusk, @realDonaldTrump)
-- 📊 Basic tweet metrics (likes, retweets, engagement)
-- 💾 Supabase PostgreSQL caching layer
-- ⚡ Edge Functions for API processing
-- � Responsive Vue.js frontend with Tailwind CSS
+## The numbers
 
-### Planned Enhancements
-- 📈 Sentiment analysis for tweets
-- 🔍 Multi-platform integration (Instagram, Facebook, Reddit)
-- 🗂️ User-defined account lists
-- 📉 Advanced analytics dashboard
-- 🔔 Custom notifications for important posts
+Measured from the running system, updated as it accumulates — not aspirational:
 
-## 🛠️ Tech Stack
+| Metric | Value | Source |
+|---|---|---|
+| Ingest rate | ~28–33 events/s | daemon stats (journald) |
+| Daemon memory | ~13–14 MB RSS, flat | /proc/self/statm |
+| Uptime | *accumulating* | systemd + external witness |
+| DB size | 64 MB of 500 MB | `pg_database_size` |
+| Recorded gaps | 0 | `ingest_gaps` (loss only — see ADR 0003) |
+| Editor estimates | HLL p=12 (~1.6% typical error) | daemon-computed, labeled as estimates |
 
-**Frontend**
-- Vue 3 (Composition API)
-- Tailwind CSS
-- Vue Toastification
+## How it works
 
-**Backend**
-- Supabase Edge Functions (Deno)
-- Twitter API v2
+1. **Ingest** — the daemon tails `mediawiki.recentchange` (SSE). Wikimedia kills every connection
+   after 15 minutes by policy; the daemon reconnects with `Last-Event-ID` and loses nothing.
+2. **Batch** — every 5 s (or 256 events): raw rows into a 6-hour window, counter upserts into
+   minute/hour/day buckets, sketch merge, cursor advance — **one Postgres transaction**. A crash
+   mid-batch rolls back atomically; data and cursor can never disagree.
+3. **Cardinality** — unique editors per bucket via HyperLogLog (precision 12), computed by the
+   daemon, stored alongside the raw sketch. Always labeled as estimates.
+4. **Retention** — `pg_cron` deletes: minute buckets after 7 days, hourly after 30, daily after 90;
+   the raw window is dropped after 6 hours. Full-fidelity events live 30 days as compressed
+   NDJSON on the ingest VM.
+5. **Reads** — the dashboard polls anon-readable views (`v_edits_timeline`, `v_top_wikis_24h`,
+   `v_bot_ratio_24h`, `v_editor_trend`, `v_health`). No auth, no sockets — boring on purpose.
 
-**Database**
-- Supabase PostgreSQL
-- Row-level security enabled
+## Stack
 
-**DevOps**
-- GitHub Actions (CI/CD)
-- Supabase Migrations
+- **Ingest**: Rust (tokio, sqlx, reqwest-eventsource, hyperloglogplus) · systemd on an Oracle Cloud VM
+- **Database**: Postgres on Supabase (free tier) — rollups, HLL sketches as `bytea`, `pg_cron`
+- **Dashboard**: Vue 3 + Vite + Tailwind, static hosting
 
-## 📂 Project Structure
-
-```bash
-twitter-dashboard/
-├── src/
-│   ├── assets/               # Static assets
-│   ├── components/           # Vue components
-│   │   ├── TweetCard.vue     # Individual tweet display
-│   │   └── Analytics.vue     # (Planned) Metrics visualization
-│   ├── composables/          # Vue composables
-│   │   └── useTweets.js      # Tweet data logic
-│   ├── stores/               # Pinia stores
-│   │   └── tweets.js         # State management
-│   └── views/                # Page components
-│       └── Dashboard.vue     # Main view
-├── supabase/
-│   ├── migrations/           # Database migrations
-│   └── functions/            # Edge Functions
-│       └── twitter-fetch/    # Twitter API handler
-└── tests/                    # (Planned) Test directory
+## Repo layout
 
 ```
-🚀 Getting Started
-Prerequisites
-Node.js v16+
+ingest/                  Rust daemon (the interesting part)
+supabase/migrations/     schema + retention (applied via psql; *_cron.sql is Supabase-only)
+docs/adr/                decision records — read 0001–0003 for the why
+docs/research/           cited primary-source research notes
+src/                     Vue dashboard
+```
 
-Supabase account
+## Running it
 
-Twitter Developer account
+**Daemon** (on the VM, as the `ingest` service user):
 
-Git
+```bash
+sudo systemctl start wikistream-ingest
+journalctl -u wikistream-ingest -f -o cat   # batches + stats every 30 s
+```
 
-Installation
-Clone the repo:
+**Dashboard**: `npm ci && npm run dev` (env in `.env.example`).
 
-bash
-Copy
-git clone https://github.com/yourusername/social-media-analytics.git
-cd social-media-analytics
-Install dependencies:
+**Migrations**: `psql "$DATABASE_URL" -f supabase/migrations/<file>.sql` in filename order.
+`*_cron.sql` requires Supabase's `pg_cron`.
 
-bash
-Copy
-npm install
-Set up environment variables:
+## Decision records
 
-bash
-Copy
-cp .env.example .env
-Edit .env with your credentials.
+- [ADR 0001 — Storage & retention](docs/adr/0001-storage-and-retention.md): tiered dimensions,
+  6 h raw window + VM archive, 90/30/7, pg_cron deletes (~170 MB steady state of 500 MB)
+- [ADR 0002 — Rollup schema](docs/adr/0002-rollup-schema.md): nullable-wiki tables, p=12 sketches
+  with daemon-computed estimates, atomic batch+cursor
+- [ADR 0003 — Delivery semantics](docs/adr/0003-delivery-semantics.md): strictly-newer resume,
+  loss-only gap ledger, uniform grain path, daemon-owned archive
 
-Database setup:
+## Honesty section
 
-bash
-Copy
-supabase start
-supabase migration up
-Deploy Edge Functions:
+- Editor counts are **estimates** (HLL), never exact — labeled as such everywhere.
+- **Gaps** (data older than the replay window after downtime) are recorded in the database and
+  surfaced here, never papered over.
+- Measured numbers above come from the running system; this project has been live since
+  *2026-08-29* and is still accumulating history.
 
-bash
-Copy
-supabase functions deploy twitter-fetch --no-verify-jwt
-Run the development server:
+## Contact
 
-bash
-Copy
-npm run dev
-🔧 Database Schema
-sql
-Copy
-CREATE TABLE tweets (
-  id BIGINT PRIMARY KEY,
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  author_id TEXT NOT NULL,
-  author_name TEXT NOT NULL,
-  author_handle TEXT NOT NULL,
-  author_image TEXT,
-  likes INT DEFAULT 0,
-  retweets INT DEFAULT 0,
-  replies INT DEFAULT 0,
-  sentiment_score FLOAT, -- Planned for sentiment analysis
-  platform TEXT DEFAULT 'twitter',
-  raw_data JSONB -- Full API response storage
-);
-
-CREATE INDEX idx_tweets_author ON tweets(author_id);
-CREATE INDEX idx_tweets_timestamp ON tweets(created_at);
-🤝 How to Contribute
-I welcome contributions! Here's how:
-
-Fork the project
-
-Create your feature branch (git checkout -b feature/AmazingFeature)
-
-Commit your changes (git commit -m 'Add some AmazingFeature')
-
-Push to the branch (git push origin feature/AmazingFeature)
-
-Open a Pull Request
-
-Good First Issues
-Add loading skeletons
-
-Implement dark mode toggle
-
-Add unit tests with Vitest
-
-📜 License
-Distributed under the MIT License. See LICENSE for more information.
-
-📬 Contact
-Tamim GOLAM - golam.tamim94@gmail.com
-Karl Marvensky JOISSAINT 
-Jean-Pierre TRAN 
-
-Project Link: https://github.com/tamim94/social-media-analytics
-
-🙏 Acknowledgments
-Vue.js and Supabase communities
-
-Twitter API documentation
-
-
-
+Tamim GOLAM — golam.tamim94@gmail.com
